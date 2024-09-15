@@ -3,6 +3,8 @@
 # this bash script ingests an updated csv file from an S3 object storage 
 # and stores it temporarily in a local directory
 
+source /opt/airflow/file-openrc.sh
+
 echo "Connecting to S3 object storage"
 echo "----------------------------------------"
 
@@ -27,7 +29,7 @@ echo "----------------------------------------"
 printf '%s\n' "${all_files[@]}"
 
 # specify the directory to which the files will be downloaded
-downloadPath="/home/ubuntu/ds/Airflow-ETL-pipeline/data/raw"
+downloadPath="/opt/airflow/data/raw"
 
 # create the directory if it does not exist
 mkdir -p "$downloadPath"

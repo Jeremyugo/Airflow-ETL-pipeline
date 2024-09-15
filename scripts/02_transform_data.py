@@ -1,53 +1,71 @@
 """
 Python script to perform minor transformations on temporarily locally stored csv file
 """
-# importing packages
+import logging
 from sqlalchemy import create_engine
 import pandas as pd
 import numpy as np
+import os
+from dotenv import load_dotenv
 import sys
-sys.path.append('.')
+sys.path.append('..')
 
-# function to perform python transformation
+# Set up logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Load .env file
+load_dotenv()
+
+# Retrieve PostgreSQL connection string from environment variable
+postgres_conn = "postgres+psycopg2://postgres:postgres@postgres:5432/postgres"
+
+if postgres_conn is None:
+    logging.error(
+        "Environment variable 'AIRFLOW__CORE__SQL_ALCHEMY_CONN' is not set.")
+    sys.exit(1)  # Exit with an error code
+
+# Modify the connection string to remove 'postgres+psycopg2' part since psycopg2 expects only 'postgresql' protocol
+postgres_conn = postgres_conn.replace('postgres+psycopg2', 'postgresql')
 
 
-def transform(user="postgres", password="postgres", database="postgres", host="localhost", port=5432):
-    """_summary_
+def transform(postgres_conn=postgres_conn):
+    """Perform data transformation on a locally stored CSV file and update it with new data.
 
     Args:
-        user (str, optional): _description_. Defaults to "postgres".
-        password (str, optional): _description_. Defaults to "postgres".
-        database (str, optional): _description_. Defaults to "postgres".
-        host (str, optional): _description_. Defaults to "localhost".
-        port (int, optional): _description_. Defaults to 5432.
+        postgres_conn (str): PostgreSQL connection string.
     """
-    # postgres connection string with default values
-    connection_string = f"postgresql://{user}:{password}@{host}:{port}/{database}"
-    engine = create_engine(connection_string)
-    local_file_path = "/home/ubuntu/ds/Airflow-ETL-pipeline/data/raw/storedata.csv"
+    engine = create_engine(postgres_conn)
+    local_file_path = "/opt/airflow/data/raw/storedata.csv"
 
-    # load local file
-    df_local = pd.read_csv(local_file_path)
+    if os.path.isfile(local_file_path):
+        logging.info(f"Reading file: {local_file_path}")
 
-    # try-except block to handle missing local data error
-    try:
-        query = 'SELECT * FROM storedata'
-        df = pd.read_sql(query, engine)
-        idx_ = list(set(df_local['Row ID'].values.tolist()
-                        ) - set(df['Row ID'].values.tolist()))
-    except Exception as e:
-        idx_ = df_local['Row ID'].values.tolist()
+        try:
+            df_local = pd.read_csv(local_file_path)
+            logging.info(f"Loaded {len(df_local)} rows from local file")
 
-    # get new subset of data
-    df_local = df_local[np.isin(df_local['Row ID'], idx_)]
+            try:
+                query = 'SELECT * FROM storedata'
+                df = pd.read_sql(query, engine)
+                idx_ = list(
+                    set(df_local['Row ID'].values.tolist()) - set(df['Row ID'].values.tolist()))
+            except Exception as e:
+                logging.error("Error querying PostgreSQL: %s", e)
+                idx_ = df_local['Row ID'].values.tolist()
 
-    df_local.insert(4, "Delivery Duration", pd.to_datetime(
-        df_local['Ship Date']) - pd.to_datetime(df_local['Order Date']))
-    df_local.drop(["Country/Region", "Customer Name"], axis=1, inplace=True)
+            df_local = df_local[np.isin(df_local['Row ID'], idx_)]
+            df_local.insert(4, "Delivery Duration", pd.to_datetime(
+                df_local['Ship Date']) - pd.to_datetime(df_local['Order Date']))
+            df_local.drop(["Country/Region", "Customer Name"],
+                          axis=1, inplace=True)
 
-    df_local.to_csv(local_file_path, index=False)
-
-    print("Data Transformed!")
+            df_local.to_csv(local_file_path, index=False)
+            logging.info("Data transformed and saved successfully!")
+        except Exception as e:
+            logging.error("Error processing the file: %s", e)
+    else:
+        logging.error(f"File not found: {local_file_path}")
 
 
 if __name__ == "__main__":

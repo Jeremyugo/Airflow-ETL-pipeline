@@ -3,11 +3,22 @@ Python script to load cleaned/transformed data into PostgreSQL database
 """
 
 # importing packages
+from dotenv import load_dotenv
 import os
 import csv
 import psycopg2
 from psycopg2 import sql
 from psycopg2 import OperationalError
+import sys
+sys.path.append('..')
+
+
+load_dotenv()
+
+postgres_conn = "postgres+psycopg2://postgres:postgres@postgres:5432/postgres"
+
+# Modify the connection string to remove 'postgres+psycopg2' part since psycopg2 expects only 'postgresql' protocol
+postgres_conn = postgres_conn.replace('postgres+psycopg2', 'postgresql')
 
 # function to load data to PostgreSQL
 
@@ -15,18 +26,12 @@ from psycopg2 import OperationalError
 def load_csv_to_postgres():
     # connect to PostgreSQL database
     try:
-        conn = psycopg2.connect(
-            dbname="postgres",
-            user="postgres",
-            password="postgres",
-            host="localhost",
-            port="5432"
-        )
+        conn = psycopg2.connect(postgres_conn)
         conn.autocommit = True
         cursor = conn.cursor()
 
         # specify the directory to search for CSV files
-        directory_to_search = '/home/ubuntu/ds/Airflow-ETL-pipeline/data/raw/'
+        directory_to_search = '/opt/airflow/data/raw/'
 
         # find CSV files in the directory
         for filename in os.listdir(directory_to_search):

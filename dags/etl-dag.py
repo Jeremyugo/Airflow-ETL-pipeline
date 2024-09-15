@@ -1,7 +1,9 @@
-""" Airflow ETL DAG to automate the ingestion, transformation and loading of data into
-    a PostgreSQL database
 """
-# importing packages
+Airflow ETL DAG to automate the ingestion, transformation, and loading of data into
+a PostgreSQL database.
+"""
+
+# importing necessary packages for the DAG and operators
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
@@ -11,17 +13,16 @@ from datetime import datetime, timedelta
 import sys
 sys.path.append("..")
 
-# dag default arguments
+# Default arguments that apply to all tasks in the DAG
 default_args = {
-    'owner': 'jerry',
-    'depends_on_past': False,
-    'email_on_failure': False,
-    'email_on_retry': False,
-    "retry_delay": timedelta(minutes=2)
+    'owner': 'jerry',  # Owner of the DAG
+    'depends_on_past': False,  # DAG execution does not depend on previous runs
+    'email_on_failure': False,  # No email alert on failure
+    'email_on_retry': False,  # No email alert on retry
+    "retry_delay": timedelta(minutes=2)  # Delay between retries
 }
 
-
-# Define the SQL statement to create the table
+# SQL statement for creating the target table in PostgreSQL
 create_table_sql = """
 CREATE TABLE IF NOT EXISTS "storedata" (
     "Row ID" VARCHAR(36) NOT NULL,
@@ -47,69 +48,69 @@ CREATE TABLE IF NOT EXISTS "storedata" (
 );
 """
 
-# python functions to be used in PythonOperator
-
 
 def transform_data(**Kwargs):
-    import subprocess
-    import logging
+    """
+    Function to run a Python script for data transformation.
 
-    try:
-        result = subprocess.run(
-            ["python", "/opt/airflow/scripts/02_transform_data.py"],
-            check=True,
-            capture_output=True,  # Capture stdout and stderr
-            text=True  # Ensure output is in text format
-        )
-        logging.info("Subprocess completed successfully.")
-        logging.info("stdout: %s", result.stdout)
-        logging.info("stderr: %s", result.stderr)
-    except subprocess.CalledProcessError as e:
-        logging.error("Command failed with exit code %d", e.returncode)
-        logging.error("stdout: %s", e.stdout)
-        logging.error("stderr: %s", e.stderr)
-        raise
-
-
-# python functions to be used in PythonOperator
-def load_data(**Kwargs):
+    Uses a subprocess to execute the transformation script and captures the output and errors.
+    """
     import subprocess
     subprocess.run(
-        ["python", "/opt/airflow/scripts/03_load_data.py"], check=True)
+        ["python", "/opt/airflow/scripts/02_transform_data.py"],
+    )
 
 
-# define the DAG
+def load_data(**Kwargs):
+    """
+    Function to run a Python script for loading data into PostgreSQL.
+
+    Executes the data loading script using a subprocess.
+    """
+    import subprocess
+    subprocess.run(
+        ["python", "/opt/airflow/scripts/03_load_data.py"], check=True
+    )
+
+
+# Define the ETL pipeline DAG
 with DAG(
     'etl_pipeline_dag',
-    default_args=default_args,
-    description="ETL pipeline to extract csv files from S3 object storage using Bash, transform and load the data into a PostgreSQL database using Python scripts",
-    schedule_interval=None,  # manual execution for now
-    start_date=days_ago(1),
-    catchup=False
+    default_args=default_args,  # Default arguments applied to all tasks
+    description="ETL pipeline to extract CSV files from S3 object storage using Bash, "
+                "transform the data, and load it into a PostgreSQL database using Python scripts",
+    schedule_interval=None,  # DAG will be triggered manually for now
+    start_date=days_ago(1),  # DAG start date (1 day ago)
+    catchup=False  # Don't backfill past runs
 ) as dag:
 
+    # BashOperator to extract data from S3
     extract_task = BashOperator(
         task_id="extract_task",
+        # Shell script to extract data
         bash_command="bash /opt/airflow/scripts/01_extract_data.sh ",
     )
 
-    # Define the PostgresOperator task
+    # PostgresOperator to create a table in PostgreSQL
     create_table_task = PostgresOperator(
         task_id='create_storedata_table',
-        postgres_conn_id='my_postgres_conn',  # Update with your connection ID
-        sql=create_table_sql,
+        # PostgreSQL connection ID defined in Airflow
+        postgres_conn_id='my_postgres_conn',
+        sql=create_table_sql,  # SQL command to create the table
         dag=dag,
     )
 
+    # PythonOperator to run the data transformation script
     transform_task = PythonOperator(
         task_id="transform_task",
-        python_callable=transform_data
+        python_callable=transform_data  # Call the transform_data function
     )
 
+    # PythonOperator to run the data loading script
     load_task = PythonOperator(
         task_id="load_task",
-        python_callable=load_data
+        python_callable=load_data  # Call the load_data function
     )
 
-    # task dependencies
+    # Define task dependencies: extract -> create table -> transform -> load
     extract_task >> create_table_task >> transform_task >> load_task

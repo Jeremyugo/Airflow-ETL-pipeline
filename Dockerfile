@@ -7,7 +7,6 @@ ADD data/raw /opt/airflow/data/raw
 ADD dags /opt/airflow/dags
 ADD scripts /opt/airflow/scripts
 
-# Ensure correct permissions
 RUN mkdir -p /opt/airflow/data/raw \
     && chown -R airflow: ${AIRFLOW_HOME}
 

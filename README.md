@@ -51,3 +51,14 @@ docker compose up -d
 ```
 
 4. if port `8080` is not created, create one in the ports tab in linux panel
+
+5. log into Airflow webserver and create a new Postgres connection in the 'Admin' dropdown with the default config
+
+```
+Connection Id = my_postgres_conn
+Connection Type = Postgres
+Host = postgres
+Database = postgres
+Login = postgres
+Port = postgres # as specified in the docker-compose.yml postgres service
+```

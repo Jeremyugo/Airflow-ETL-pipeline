@@ -1,36 +1,20 @@
 #!/bin/bash
 
-# To run this file, you must first place Kinetisense-openrc.sh in the same directory as this file. 
-# Then, execute the bash code using ./data_ingestion_1_download_csv_files.sh The data will be stored at downloadPath="/home/ubuntu/kinetisense/data/raw/test"
-# Source the openrc file (You will likely need to enter a password here)
-echo "Sourcing Kinetisense-openrc.sh. Please enter your password if prompted."
-source ~/FileStorage-openrc.sh
+# this bash script ingests an updated csv file from an S3 object storage 
+# and stores it temporarily in a local directory
 
-# List OpenStack projects
-echo "Listing OpenStack projects..."
-openstack project list
+echo "Connecting to S3 object storage"
+echo "----------------------------------------"
 
-# Export SURL variable
+# export SURL variable
 export SURL="https://swift-yeg.cloud.cybera.ca:8080/v1/AUTH_35c57c9bf28a465395c6decd0ab9ddef"
 
-# List containers
-echo "Listing containers..."
-swift --os-storage-url="$SURL" list
-
-# # Ask the user to select a container
-# echo "Please enter the name of the container you wish to download from:"
-# read containerName
-
-# # Validate input
-# if [ -z "$containerName" ]; then
-#     echo "You must enter a container name."
-#     exit 1
-# fi
-
+# object storage container name
 containerName="FileStorage"
 
-# List all files in the selected container and read them into an array
+# list all files in the selected container and read them into an array
 echo "Listing all files in the container: $containerName..."
+echo "----------------------------------------"
 IFS=$'\n' read -r -d '' -a all_files < <(swift --os-storage-url="$SURL" list "$containerName" && printf '\0')
 
 if [ ${#all_files[@]} -eq 0 ]; then
@@ -39,16 +23,18 @@ if [ ${#all_files[@]} -eq 0 ]; then
 fi
 
 echo "Files found in the container:"
+echo "----------------------------------------"
 printf '%s\n' "${all_files[@]}"
 
-# Specify the directory to which the files will be downloaded
-downloadPath="/home/ubuntu/ds/ETL/data/raw"
+# specify the directory to which the files will be downloaded
+downloadPath="/home/ubuntu/ds/Airflow-ETL-pipeline/data/raw"
 
-# Create the directory if it does not exist
+# create the directory if it does not exist
 mkdir -p "$downloadPath"
 
-# Download all files from the selected container to the specified directory
+# download all files from the selected container to the specified directory
 echo "Downloading all files from the container: $containerName to $downloadPath"
+echo "----------------------------------------"
 for file in "${all_files[@]}"; do
     echo "Attempting to download \"$file\" to $downloadPath..."
     swift --os-storage-url="$SURL" download "$containerName" --output "$downloadPath/$file" "$file"
@@ -56,8 +42,9 @@ done
 
 echo "Download process completed."
 
-# Unzip any .zip files in the downloadPath and then delete them
+# unzip any .zip files in the downloadPath and then delete them
 echo "Checking for zip files to extract and remove..."
+echo "----------------------------------------"
 while IFS= read -r -d '' zip_file; do
     echo "Extracting '$zip_file'..."
     unzip -o "$zip_file" -d "$downloadPath"

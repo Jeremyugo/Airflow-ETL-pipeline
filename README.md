@@ -4,7 +4,7 @@ Containerized ETL pipe line using Apache Airflow and Docker.
 
 #### Workflow
 
-![alt text](etl-1.png)
+![alt text](./images/etl-1.png)
 
 1. New or Updated CSV is placed in an S3 object storage
 2. CSV file is ingested to a temporary local directory using a bash script
@@ -12,7 +12,7 @@ Containerized ETL pipe line using Apache Airflow and Docker.
 4. transformed data is added/appended to a table in PostgreSQL
 
 **Airflow DAG**
-![alt text](image.png)
+![alt text](./images/image.png)
 
 ## Steps to replicate
 
@@ -62,3 +62,6 @@ Database = postgres
 Login = postgres
 Port = postgres # as specified in the docker-compose.yml postgres service
 ```
+
+6. log into pgadmin4 using port `5050`
+   ![alt text](./images/pgadmin4.png)

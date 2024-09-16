@@ -8,6 +8,8 @@ services:
       - POSTGRES_DB=postgres
     ports:
       - "5432:5432"
+    networks:
+      - airflow-network
 
   scheduler:
     build:
@@ -33,6 +35,8 @@ services:
       interval: 30s
       timeout: 30s
       retries: 2
+    networks:
+      - airflow-network
 
   webserver:
     hostname: webserver
@@ -61,3 +65,27 @@ services:
       interval: 30s
       timeout: 30s
       retries: 2
+    networks:
+      - airflow-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    depends_on:
+      - postgres
+    ports:
+      - "5050:80" # Expose pgAdmin on port 5050
+    restart: unless-stopped
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - airflow-network
+
+networks:
+  airflow-network:
+    driver: bridge
+
+volumes:
+  pgadmin-data:

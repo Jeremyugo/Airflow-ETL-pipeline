@@ -5,13 +5,13 @@
 # of any .zip files after download.
 
 # Load S3 object storage credentials (e.g., OpenStack Swift)
-source /opt/airflow/file-openrc.sh
+source /opt/airflow/s3-cred.sh
 
 echo "Connecting to S3 object storage"
 echo "----------------------------------------"
 
 # Set the storage URL for the S3-compatible service
-export SURL="https://swift-yeg.cloud.cybera.ca:8080/v1/AUTH_35c57c9bf28a465395c6decd0ab9ddef"
+export SURL= #S3 endpoint URL goes here
 
 # Define the container name where files are stored
 containerName="FileStorage"
